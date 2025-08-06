@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jadwal Sekolah</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+    }
+    .glass {
+      backdrop-filter: blur(10px);
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .glass-input {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+    input::placeholder {
+      color: #ccc;
+    }
+    .hidden-note {
+      display: none;
+    }
+  </style>
+</head>
+<body class="font-sans text-white">
+  <div class="max-w-7xl mx-auto py-10 px-4">
+    <h1 class="text-4xl font-extrabold text-center text-white mb-10 tracking-wide">🧠 Jadwal Sekolah Mingguan</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-6 gap-6">
+      <div class="lg:col-span-5 grid grid-cols-1 md:grid-cols-5 gap-4">
+        <!-- Hari-hari -->
+        <script>
+          const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+          document.write(days.map((day, d) => `
+            <div class="glass rounded-2xl p-4 shadow-xl">
+              <h2 class="text-xl font-semibold text-center mb-4 text-cyan-300 tracking-wide">${day}</h2>
+              <div class="space-y-3">
+                ${Array.from({ length: 10 }, (_, i) => `
+                  <div class="flex flex-col">
+                    <input
+                      class="glass-input p-2 rounded border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-1 lesson-input"
+                      placeholder="Pelajaran ke-${i + 1}"
+                      data-day="${d}" data-row="${i}" data-type="lesson"
+                    />
+                    <div class="note-section hidden-note space-y-2">
+                      <div class="note-list"></div>
+                      <button class="add-note bg-cyan-600 text-white text-sm px-3 py-1 rounded hover:bg-cyan-700 w-fit" data-day="${d}" data-row="${i}">+ Tambah Catatan</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join(''));
+        </script>
+      </div>
+
+      <!-- Papan tugas/ulangan -->
+      <div class="glass rounded-2xl p-4 shadow-xl h-fit">
+        <h2 class="text-xl font-semibold text-center mb-4 text-yellow-300 tracking-wide">📝 Papan Tugas & Ulangan</h2>
+        <div class="flex flex-col gap-2">
+          <input id="taskDate" type="date" class="glass-input p-2 rounded border border-white/20" />
+          <input id="taskDesc" type="text" placeholder="Deskripsi tugas atau ulangan" class="glass-input p-2 rounded border border-white/20" />
+          <button id="addTask" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded">+ Tambah</button>
+        </div>
+        <ul id="taskBoard" class="mt-4 space-y-2 list-disc list-inside text-sm"></ul>
+      </div>
+    </div>
+
+    <div class="text-center mt-12">
+      <button id="saveBtn" class="bg-cyan-500 text-white px-8 py-3 rounded-full text-lg font-semibold shadow-md hover:bg-cyan-600 transition">💾 Simpan Jadwal</button>
+      <span id="saveStatus" class="ml-4 text-sm text-green-300 hidden">Tersimpan!</span>
+    </div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll('input');
+
+    // Load saved data
+    inputs.forEach(input => {
+      const key = `${input.dataset.day}-${input.dataset.row}-${input.dataset.type}`;
+      if (key !== 'undefined-undefined-undefined') {
+        input.value = localStorage.getItem(key) || '';
+      }
+    });
+
+    // Load notes from localStorage
+    document.querySelectorAll('.note-list').forEach(list => {
+      const parent = list.closest('div');
+      const lessonInput = parent.parentElement.querySelector('.lesson-input');
+      const day = lessonInput.dataset.day;
+      const row = lessonInput.dataset.row;
+      const notes = JSON.parse(localStorage.getItem(`${day}-${row}-notes`) || '[]');
+      notes.forEach(text => addNoteField(list, day, row, text));
+    });
+
+    // Toggle note section
+    document.querySelectorAll('.lesson-input').forEach(input => {
+      input.addEventListener('click', () => {
+        const parent = input.closest('div');
+        const noteSection = parent.querySelector('.note-section');
+        if (noteSection) {
+          noteSection.classList.toggle('hidden-note');
+        }
+      });
+    });
+
+    // Add new note input
+    document.querySelectorAll('.add-note').forEach(button => {
+      button.addEventListener('click', () => {
+        const { day, row } = button.dataset;
+        const list = button.parentElement.querySelector('.note-list');
+        addNoteField(list, day, row, '');
+      });
+    });
+
+    function addNoteField(container, day, row, value) {
+      const input = document.createElement('input');
+      input.className = 'glass-input p-2 rounded border border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-300 w-full mb-1';
+      input.placeholder = 'Catatan / Tugas';
+      input.value = value;
+      input.addEventListener('input', () => saveNotes(day, row, container));
+      container.appendChild(input);
+    }
+
+    function saveNotes(day, row, container) {
+      const values = Array.from(container.querySelectorAll('input')).map(i => i.value);
+      localStorage.setItem(`${day}-${row}-notes`, JSON.stringify(values));
+    }
+
+    // Save all basic inputs
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      inputs.forEach(input => {
+        const key = `${input.dataset.day}-${input.dataset.row}-${input.dataset.type}`;
+        if (key !== 'undefined-undefined-undefined') {
+          localStorage.setItem(key, input.value);
+        }
+      });
+      const status = document.getElementById('saveStatus');
+      status.classList.remove('hidden');
+      setTimeout(() => status.classList.add('hidden'), 2000);
+    });
+
+    // Task board logic (new version)
+    const taskBoard = document.getElementById('taskBoard');
+    const taskDate = document.getElementById('taskDate');
+    const taskDesc = document.getElementById('taskDesc');
+    const addTask = document.getElementById('addTask');
+
+    let tasks = JSON.parse(localStorage.getItem('task-board') || '[]');
+
+    function renderTasks() {
+      taskBoard.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.textContent = `${task.date} - ${task.desc}`;
+        taskBoard.appendChild(li);
+      });
+    }
+
+    addTask.addEventListener('click', () => {
+      const date = taskDate.value;
+      const desc = taskDesc.value;
+      if (date && desc) {
+        tasks.push({ date, desc });
+        localStorage.setItem('task-board', JSON.stringify(tasks));
+        renderTasks();
+        taskDate.value = '';
+        taskDesc.value = '';
+      }
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>
